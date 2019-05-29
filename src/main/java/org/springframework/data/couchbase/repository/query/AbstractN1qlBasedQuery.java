@@ -82,6 +82,15 @@ public abstract class AbstractN1qlBasedQuery implements RepositoryQuery {
 
   protected abstract JsonValue getPlaceholderValues(ParameterAccessor accessor);
 
+  protected ScanConsistency getScanConsistency() {
+
+    if (queryMethod.hasConsistencyAnnotation()) {
+      return queryMethod.getConsistencyAnnotation().value();
+    }
+
+    return getCouchbaseOperations().getDefaultConsistency().n1qlConsistency();
+  }
+
   @Override
   public Object execute(Object[] parameters) {
     ParametersParameterAccessor accessor = new ParametersParameterAccessor(queryMethod.getParameters(), parameters);
@@ -96,14 +105,12 @@ public abstract class AbstractN1qlBasedQuery implements RepositoryQuery {
     JsonValue queryPlaceholderValues = getPlaceholderValues(accessor);
 
     //prepare the final query
-    N1qlQuery query = buildQuery(statement, queryPlaceholderValues,
-        getCouchbaseOperations().getDefaultConsistency().n1qlConsistency());
+    N1qlQuery query = buildQuery(statement, queryPlaceholderValues, getScanConsistency());
 
     //prepare a count query
     Statement countStatement = getCount(accessor, parameters);
     //the place holder values are the same for the count query as well
-    N1qlQuery countQuery = buildQuery(countStatement, queryPlaceholderValues,
-        getCouchbaseOperations().getDefaultConsistency().n1qlConsistency());
+    N1qlQuery countQuery = buildQuery(countStatement, queryPlaceholderValues, getScanConsistency());
     return processor.processResult(executeDependingOnType(query, countQuery, queryMethod, accessor.getPageable(), typeToRead));
   }
 
